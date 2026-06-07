@@ -1,12 +1,12 @@
-# Suckless Music Workflow (dmusic)
+# dmusic
 
-A highly efficient, minimalist, keyboard-centric music playback and discovery workflow designed around the [Suckless](https://suckless.org/) philosophy. 
+A highly efficient, minimalist, and keyboard-centric music playback and discovery workflow. While it strongly adheres to the [Suckless](https://suckless.org/) philosophy of simplicity and clarity, **dmusic is an independent project**.
 
-Instead of relying on heavy ncurses clients or GUIs, this workflow leverages simple, POSIX-compliant shell scripts and native utilities to manage music playback (`mpc` / `mpd`), interactive directory/playlist navigation (patched `dmenu`), and music discovery (`curl`, `jq`, `mpv`).
+Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, POSIX-compliant shell scripts and native utilities to manage music playback (`mpc` / `mpd`), interactive directory/playlist navigation (via a patched `dmenu`), and music discovery (`curl`, `jq`, `mpv`).
 
 ## Components
 
-1. **`dmpc` (Suckless ncmpcpp replacement)**
+1. **`dmpc` (ncmpcpp replacement)**
    A POSIX shell script providing a dynamic, vim-like interface to `mpd` via `dmenu`. 
    Features include:
    - Playback control (Toggle, Next, Prev, Shuffle, Repeat).
@@ -15,7 +15,7 @@ Instead of relying on heavy ncurses clients or GUIs, this workflow leverages sim
    - Filesystem-based playlist management (using symlinks).
    - Local playback history.
 
-2. **`smd` (Suckless Music Discoverer)**
+2. **`smd` (Simple Music Discoverer)**
    A POSIX shell script utilizing the Last.fm API to discover new music.
    Features include:
    - Find similar artists or tracks based on search or what is currently playing in MPD.
