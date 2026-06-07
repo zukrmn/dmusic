@@ -1,0 +1,81 @@
+# Suckless Music Workflow (dmusic)
+
+A highly efficient, minimalist, keyboard-centric music playback and discovery workflow designed around the [Suckless](https://suckless.org/) philosophy. 
+
+Instead of relying on heavy ncurses clients or GUIs, this workflow leverages simple, POSIX-compliant shell scripts and native utilities to manage music playback (`mpc` / `mpd`), interactive directory/playlist navigation (patched `dmenu`), and music discovery (`curl`, `jq`, `mpv`).
+
+## Components
+
+1. **`dmpc` (Suckless ncmpcpp replacement)**
+   A POSIX shell script providing a dynamic, vim-like interface to `mpd` via `dmenu`. 
+   Features include:
+   - Playback control (Toggle, Next, Prev, Shuffle, Repeat).
+   - Queue management.
+   - Interactive library browsing using `dmenu` directory traversal.
+   - Filesystem-based playlist management (using symlinks).
+   - Local playback history.
+
+2. **`smd` (Suckless Music Discoverer)**
+   A POSIX shell script utilizing the Last.fm API to discover new music.
+   Features include:
+   - Find similar artists or tracks based on search or what is currently playing in MPD.
+   - Browse top tracks by genre or global charts.
+   - **Stream Preview**: Instantly stream discovered tracks in the background using `mpv` and `yt-dlp` without downloading.
+   - Copy track names to clipboard for use in Soulseek/Nicotine+.
+   - Add discoveries to a local wishlist file.
+
+3. **`dmenu-navkeys-5.4.diff`**
+   A custom patch for `dmenu` (version 5.4) that introduces a vim-like navigation mode (`-vk`). 
+   - Starts in normal mode: use `j`, `k` to navigate.
+   - Overloads `h` (Left) and `l` (Right) to return custom exit codes (`10` and `11` respectively), enabling interactive shell scripts to traverse directory trees.
+   - Press `/` to enter standard `dmenu` search/insert mode.
+   - Press `Escape` to clear search and return to normal mode.
+
+## Dependencies
+
+This workflow relies on the following packages. On Void Linux, you can install them via `xbps-install`:
+
+```bash
+sudo xbps-install -S mpd mpc mpv yt-dlp curl jq xclip
+```
+
+- **dmenu**: You must build `dmenu` from source using the provided patch.
+- **Fonts**: The scripts use Nerd Font icons (specifically `nf-md` icons) for the interface. Ensure you have a compatible font installed (e.g., `nerd-fonts`).
+
+## Installation
+
+### 1. Patch and Build dmenu
+Clone the dmenu source code (version 5.4 or later) and apply the included patch:
+
+```bash
+git clone https://git.suckless.org/dmenu
+cd dmenu
+git apply /path/to/dmusic/dmenu-navkeys-5.4.diff
+sudo make clean install
+```
+
+### 2. Install Scripts
+Place the scripts somewhere in your `$PATH` (e.g., `~/.local/bin` or `/opt/scripts`):
+
+```bash
+cp dmpc ~/.local/bin/
+cp smd ~/.local/bin/
+chmod +x ~/.local/bin/dmpc ~/.local/bin/smd
+```
+
+### 3. Configuration
+By default, the scripts expect the following paths (which you can modify by editing the variables at the top of each script):
+- Music Directory: `~/songs`
+- Playlists Directory: `~/songs/playlists`
+- Wishlist: `~/songs/wishlist.txt`
+
+Make sure `mpd` is running and properly configured to use your music directory.
+
+## Usage
+
+Simply run `dmpc` or `smd` from your terminal, or bind them to a hotkey in your window manager (like `dwm` or `sxhkd`).
+
+- In the `dmenu` interface, use `j`/`k` to move up and down.
+- Use `l` to select/enter a directory.
+- Use `h` to go back a directory.
+- Press `/` to search. Press `Escape` to cancel the search and return to normal navigation.
