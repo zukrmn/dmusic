@@ -1,4 +1,4 @@
-<h1 align="center"><strong>dmusic</strong></h1>
+<h1 align="center"><strong><em>dmusic</em></strong></h1>
 
 A highly efficient, minimalist, and keyboard-centric music playback and discovery workflow. While it strongly adheres to the [Suckless](https://suckless.org/) philosophy of simplicity and clarity, **dmusic is an independent project**.
 
