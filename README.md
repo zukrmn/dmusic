@@ -1,4 +1,4 @@
-<h1 align="center"><strong>dmusic</strong></h1>
+<h1 align="center"><strong><em>dmusic</em></strong></h1>
 
 A highly efficient, minimalist, and keyboard-centric music playback and discovery workflow. While it strongly adheres to the [Suckless](https://suckless.org/) philosophy of simplicity and clarity, **dmusic is an independent project**.
 
@@ -33,7 +33,17 @@ Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, 
 
 ## Dependencies
 
-This workflow relies on the following packages. On Void Linux, you can install them via `xbps-install`:
+This workflow relies on the following packages. Here is how each tool is utilized:
+
+- **`mpd`**: Music Player Daemon (the core audio backend for your local library).
+- **`mpc`**: Command-line client for MPD (used by `dmpc` to control playback and queues).
+- **`mpv`**: Minimalist media player (used by `smd` to play background stream previews without video).
+- **`yt-dlp`**: Video/audio downloader (used as the streaming backend by `mpv` to fetch audio directly).
+- **`curl`**: Network request utility (used by `smd` to communicate with the Last.fm API).
+- **`jq`**: Lightweight JSON processor (used by `smd` to parse Last.fm API responses).
+- **`xclip`**: Command line interface to the X11 clipboard (used by `smd` to copy track names).
+
+On Void Linux, you can install them via `xbps-install`:
 
 ```bash
 sudo xbps-install -S mpd mpc mpv yt-dlp curl jq xclip
