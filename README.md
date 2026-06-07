@@ -64,6 +64,11 @@ chmod +x ~/.local/bin/dmpc ~/.local/bin/smd
 ```
 
 ### 3. Configuration
+**Last.fm API Key:** `smd` requires a Last.fm API key to discover music. Get your free API key at [Last.fm](https://www.last.fm/api/account/create) and export it in your environment (e.g., `~/.zshenv` or `~/.bashrc`):
+```bash
+export LASTFM_API_KEY="your_api_key_here"
+```
+
 By default, the scripts expect the following paths (which you can modify by editing the variables at the top of each script):
 - Music Directory: `~/songs`
 - Playlists Directory: `~/songs/playlists`
