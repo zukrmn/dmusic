@@ -3,7 +3,11 @@
 DMENU="dmenu -i -vk"
 
 # api credentials
-API_KEY="${LASTFM_API_KEY:-75d20fb472be99275392aefa2760ea09}"
+API_KEY="${LASTFM_API_KEY}"
+if [ -z "$API_KEY" ]; then
+    notify-send "SMD Error" "LASTFM_API_KEY environment variable is not set."
+    exit 1
+fi
 API_URL="http://ws.audioscrobbler.com/2.0/"
 
 # wishlist path
