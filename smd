@@ -1,31 +1,27 @@
 #!/bin/sh
-# smd - Suckless Music Discoverer
-# Strictly POSIX compliant shell script. All comments are in english.
-
-# Define dmenu command with styling
+# ui command
 DMENU="dmenu -i -vk"
 
-# Setup API credentials (user can override via environment)
+# api credentials
 API_KEY="${LASTFM_API_KEY:-75d20fb472be99275392aefa2760ea09}"
 API_URL="http://ws.audioscrobbler.com/2.0/"
 
-# Wishlist file path
+# wishlist path
 WISHLIST="/home/zukerman/songs/wishlist.txt"
 
-# Ensure curl and jq are available
+# check dependencies
 if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
     notify-send "SMD Error" "Missing curl or jq. Please install them."
     exit 1
 fi
 
-# URL encoder helper utilizing jq
+# url encoder
 urlencode() {
     echo "$1" | jq -R -r '@uri'
 }
 
-# Fetch JSON helper
+# api fetcher
 fetch_api() {
-    # Arguments: $1 = method, $2... = additional query parameters
     METHOD="$1"
     shift
     PARAMS=""
@@ -35,7 +31,7 @@ fetch_api() {
 
     RESPONSE=$(curl -s "${API_URL}?method=${METHOD}&api_key=${API_KEY}&format=json${PARAMS}")
     
-    # Check for API errors
+    # check errors
     ERROR=$(echo "$RESPONSE" | jq -r '.error // empty')
     if [ -n "$ERROR" ]; then
         ERROR_MSG=$(echo "$RESPONSE" | jq -r '.message')
@@ -46,7 +42,7 @@ fetch_api() {
     echo "$RESPONSE"
 }
 
-# Main menu loop
+# main menu
 OPTIONS="1. Find Similar Artists
 2. Find Similar Tracks (Current Song)
 3. Find Similar Tracks (Search Song)
@@ -69,12 +65,12 @@ case "$CHOICE" in
         ENCODED=$(urlencode "$ARTIST")
         RESPONSE=$(fetch_api "artist.getsimilar" "artist=${ENCODED}" "limit=20")
         
-        # Parse artists list
+        # parse artists
         RESULT=$(echo "$RESPONSE" | jq -r '.similarartists.artist[].name // empty')
         ;;
 
     "2. Find Similar Tracks (Current Song)")
-        # Check if MPD is playing and get current info
+        # check mpd status
         if ! mpc >/dev/null 2>&1; then
             notify-send "SMD Error" "MPD is not running."
             exit 1
@@ -93,7 +89,7 @@ case "$CHOICE" in
         ENCODED_TRACK=$(urlencode "$TRACK")
         RESPONSE=$(fetch_api "track.getsimilar" "artist=${ENCODED_ARTIST}" "track=${ENCODED_TRACK}" "limit=20")
         
-        # Parse tracks list
+        # parse tracks
         RESULT=$(echo "$RESPONSE" | jq -r '.similartracks.track[] | "\(.artist.name) - \(.name)" // empty')
         ;;
 
@@ -108,7 +104,7 @@ case "$CHOICE" in
         ENCODED_TRACK=$(urlencode "$TRACK")
         RESPONSE=$(fetch_api "track.getsimilar" "artist=${ENCODED_ARTIST}" "track=${ENCODED_TRACK}" "limit=20")
         
-        # Parse tracks list
+        # parse tracks
         RESULT=$(echo "$RESPONSE" | jq -r '.similartracks.track[] | "\(.artist.name) - \(.name)" // empty')
         ;;
 
@@ -120,7 +116,7 @@ case "$CHOICE" in
         ENCODED=$(urlencode "$GENRE")
         RESPONSE=$(fetch_api "tag.gettoptracks" "tag=${ENCODED}" "limit=20")
         
-        # Parse tracks list
+        # parse tracks
         RESULT=$(echo "$RESPONSE" | jq -r '.toptracks.track[] | "\(.artist.name) - \(.name)" // empty')
         ;;
 
@@ -128,7 +124,7 @@ case "$CHOICE" in
         notify-send "SMD" "Fetching global top charts..."
         RESPONSE=$(fetch_api "chart.gettoptracks" "limit=20")
         
-        # Parse tracks list
+        # parse tracks
         RESULT=$(echo "$RESPONSE" | jq -r '.tracks.track[] | "\(.artist.name) - \(.name)" // empty')
         ;;
         
@@ -143,17 +139,17 @@ case "$CHOICE" in
         ;;
 esac
 
-# Check if we got any results
+# check results
 if [ -z "$RESULT" ]; then
     notify-send "SMD Info" "No recommendations found."
     exit 0
 fi
 
-# Show recommendations list to the user
+# prompt user
 SELECTED=$(echo "$RESULT" | dmenu -i -vk -l 20 -p "Recommendations:")
 [ -z "$SELECTED" ] && exit 0
 
-# Select action for the chosen recommendation
+# prompt action
 ACTION_MENU="󰅍 Copy to Clipboard (Soulseek)
  Stream Preview (mpv/yt-dlp)
 󰆓 Add to Wishlist"
@@ -167,16 +163,16 @@ case "$ACTION" in
         ;;
         
     *Stream*)
-        # Clean up any existing stream previews first
+        # stop running streams
         pkill -f "mpv --no-video ytdl://" >/dev/null 2>&1
         
         notify-send "SMD Stream" "Streaming preview of '$SELECTED' (background)..."
-        # Play only audio using mpv with yt-dlp backend in the background
+        # start mpv daemon
         mpv --no-video "ytdl://ytsearch1:${SELECTED}" >/dev/null 2>&1 &
         ;;
         
     *Wishlist*)
-        # Ensure songs directory exists
+        # ensure wishlist dir
         mkdir -p "$(dirname "$WISHLIST")"
         echo "$SELECTED" >> "$WISHLIST"
         notify-send "SMD Wishlist" "Added to $WISHLIST"
