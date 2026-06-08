@@ -2,6 +2,10 @@
 
 A highly efficient, minimalist, and keyboard-centric music playback and discovery workflow. While it strongly adheres to the [Suckless](https://suckless.org/) philosophy of simplicity and clarity, **dmusic is an independent project**.
 
+<div align="center">
+  <video src="assets/dmusic-demo.mp4" controls width="100%"></video>
+</div>
+
 Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, POSIX-compliant shell scripts and native utilities to manage music playback (`mpc` / `mpd`), interactive directory/playlist navigation (via a patched `dmenu`), and music discovery (`curl`, `jq`, `mpv`).
 
 ## Components
