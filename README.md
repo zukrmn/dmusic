@@ -60,7 +60,7 @@ Clone the dmenu source code (version 5.4 or later) and apply the included patch:
 ```bash
 git clone https://git.suckless.org/dmenu
 cd dmenu
-git apply /path/to/dmusic/dmenu-navkeys-5.4.diff
+patch -p1 -i /path/to/dmusic/dmenu-navkeys-5.4.diff
 sudo make clean install
 ```
 
