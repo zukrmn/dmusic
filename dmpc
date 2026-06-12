@@ -124,7 +124,7 @@ case "$CHOICE" in
         while true; do
             if [ "$CURRENT_DIR" = "$SONGS_DIR" ]; then
                 # exclude temp and playlists
-                LIST=$(ls -1 "$CURRENT_DIR" | grep -vE "^(temp|playlists)$")
+                LIST=$(ls -1 "$CURRENT_DIR" | grep -vE "^(temp|playlists|wishlist\.txt)$")
             else
                 LIST=$(ls -1 "$CURRENT_DIR")
             fi
