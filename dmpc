@@ -51,7 +51,8 @@ ${REPEAT_LABEL}
 󰎆
 󰲹
 󱁴
-󰋼"
+󰋼
+󰉒"
 
 if [ -n "$CURRENT_SONG" ]; then
     OPTIONS="${OPTIONS}
@@ -247,6 +248,30 @@ case "$CHOICE" in
             notify-send "Currently Playing" "$CURRENT"
         else
             notify-send "MPD" "No active song in queue."
+        fi
+        ;;
+    "󰉒")
+        # collect audio files waiting in temp/
+        TEMP_FILES=$(find "${SONGS_DIR}/temp" -maxdepth 1 -type f \
+            \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" \
+               -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) \
+            2>/dev/null)
+
+        if [ -z "$TEMP_FILES" ]; then
+            notify-send "msort" "temp/ is empty, nothing to sort."
+            exit 0
+        fi
+
+        COUNT=$(printf '%s\n' "$TEMP_FILES" | wc -l)
+        SORT_MENU="Sort All (${COUNT} file(s))"
+        SELECTED=$(printf '%s\n%s\n' "$SORT_MENU" "$TEMP_FILES" \
+            | $DMENU -l 20 -p "Sort temp/:")
+        [ -z "$SELECTED" ] && exit 0
+
+        if [ "$SELECTED" = "$SORT_MENU" ]; then
+            /opt/scripts/msort
+        else
+            /opt/scripts/msort "$SELECTED"
         fi
         ;;
     "󰐕")

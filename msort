@@ -1,0 +1,153 @@
+#!/bin/sh
+
+SONGS_DIR="/home/zukerman/songs"
+TEMP_DIR="${SONGS_DIR}/temp"
+DRY_RUN=0
+
+log() {
+    printf '[msort] %s\n' "$1" >&2
+}
+
+notify() {
+    notify-send "msort" "$1" 2>/dev/null || true
+}
+
+die() {
+    log "ERROR: $1"
+    notify "ERROR: $1"
+    exit 1
+}
+
+sanitize() {
+    printf '%s' "$1" | tr -d '/\0' | sed 's/[[:space:]]*$//'
+}
+
+count_tracks() {
+    find "$1" -maxdepth 1 -type f \
+        \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" \
+           -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) \
+        2>/dev/null | wc -l
+}
+
+extract_year() {
+    printf '%s' "$1" | grep -oE '^[0-9]{4}' | head -n1
+}
+
+ext_to_format() {
+    case "$1" in
+        flac) printf 'FLAC' ;;
+        mp3)  printf 'MP3'  ;;
+        opus) printf 'OPUS' ;;
+        ogg)  printf 'OGG'  ;;
+        aac)  printf 'AAC'  ;;
+        m4a)  printf 'M4A'  ;;
+        *)    printf '%s' "$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')" ;;
+    esac
+}
+
+# sort one file
+sort_file() {
+    FILE="$1"
+
+    [ -f "$FILE" ] || { log "not a file: $FILE"; return 1; }
+
+    META=$(ffprobe -v quiet \
+        -print_format json \
+        -show_entries format_tags \
+        "$FILE" 2>/dev/null) || { log "ffprobe failed: $FILE"; return 1; }
+
+    # case-insensitive tag lookup (Vorbis tags may be uppercase)
+    get_tag() {
+        printf '%s' "$META" | jq -r \
+            --arg t "$1" \
+            '.format.tags | to_entries[]
+             | select(.key | ascii_downcase == ($t | ascii_downcase))
+             | .value' 2>/dev/null | head -n1
+    }
+
+    ARTIST=$(get_tag "album_artist")
+    [ -z "$ARTIST" ] && ARTIST=$(get_tag "artist")
+    ALBUM=$(get_tag "album")
+    TITLE=$(get_tag "title")
+    DATE=$(get_tag "date")
+    [ -z "$DATE" ] && DATE=$(get_tag "year")
+
+    EXT=$(printf '%s' "$FILE" | awk -F. '{print tolower($NF)}')
+    FORMAT=$(ext_to_format "$EXT")
+
+    # fallbacks
+    STEM=$(basename "$FILE" | sed "s/\\.${EXT}$//I")
+    [ -z "$ARTIST" ] && ARTIST="Unknown Artist"
+    [ -z "$ALBUM"  ] && ALBUM="Single"
+    [ -z "$TITLE"  ] && TITLE="$STEM"
+
+    # detect single (album tag == title tag)
+    ALBUM_LC=$(printf '%s' "$ALBUM" | tr '[:upper:]' '[:lower:]')
+    TITLE_LC=$(printf '%s' "$TITLE" | tr '[:upper:]' '[:lower:]')
+    [ "$ALBUM_LC" = "$TITLE_LC" ] && ALBUM="Single"
+
+    YEAR=$(extract_year "$DATE")
+    [ -z "$YEAR" ] && YEAR="0000"
+
+    ARTIST=$(sanitize "$ARTIST")
+    ALBUM=$(sanitize "$ALBUM")
+    TITLE=$(sanitize "$TITLE")
+
+    ALBUM_DIR="${SONGS_DIR}/${ARTIST}/(${YEAR}) ${ALBUM} [${FORMAT}]"
+
+    # sequential track number
+    EXISTING=$(count_tracks "$ALBUM_DIR")
+    TRACK_PAD=$(printf '%02d' $((EXISTING + 1)))
+
+    DEST_FILE="${ALBUM_DIR}/${TRACK_PAD} - ${TITLE}.${EXT}"
+
+    log "file:   $FILE"
+    log "dest:   $DEST_FILE"
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        log "[dry-run] would move -> $DEST_FILE"
+        return 0
+    fi
+
+    if [ -e "$DEST_FILE" ]; then
+        log "SKIP (already exists): $DEST_FILE"
+        notify "Skipped (already exists):\n${TRACK_PAD} - ${TITLE}.${EXT}"
+        return 0
+    fi
+
+    mkdir -p "$ALBUM_DIR" || die "cannot create dir: $ALBUM_DIR"
+    mv -- "$FILE" "$DEST_FILE" || die "cannot move: $FILE -> $DEST_FILE"
+
+    log "moved OK"
+    notify "Sorted: ${ARTIST}\n${TRACK_PAD} - ${TITLE}"
+
+    return 0
+}
+
+# entry point
+command -v ffprobe >/dev/null 2>&1 || die "ffprobe not found (install ffmpeg)"
+command -v jq      >/dev/null 2>&1 || die "jq not found"
+
+if [ "$1" = "-n" ]; then
+    DRY_RUN=1
+    shift
+fi
+
+if [ $# -eq 0 ]; then
+    while IFS= read -r F; do
+        sort_file "$F"
+    done <<EOF
+$(find "$TEMP_DIR" -maxdepth 1 -type f \
+    \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" \
+       -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) \
+    2>/dev/null)
+EOF
+else
+    for F in "$@"; do
+        sort_file "$F"
+    done
+fi
+
+if [ "$DRY_RUN" -eq 0 ]; then
+    mpc update >/dev/null 2>&1 || true
+fi
