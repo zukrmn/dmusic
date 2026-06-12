@@ -1,11 +1,4 @@
 #!/bin/sh
-# msort - Music Sorter
-# Organizes audio files into: Artist/(YEAR) Album [FORMAT]/NN - Title.ext
-#
-# Usage:
-#   msort           - process all files in songs/temp
-#   msort <file>... - process specific file(s)
-#   msort -n        - dry-run
 
 SONGS_DIR="/home/zukerman/songs"
 TEMP_DIR="${SONGS_DIR}/temp"
