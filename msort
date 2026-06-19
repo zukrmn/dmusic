@@ -1,6 +1,12 @@
 #!/bin/sh
 
-SONGS_DIR="/home/zukerman/songs"
+: "${XDG_CONFIG_HOME:=$HOME/.config}"
+DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
+if [ -f "$DMUSIC_CONFIG" ]; then
+    . "$DMUSIC_CONFIG"
+fi
+
+: "${SONGS_DIR:=$HOME/songs}"
 TEMP_DIR="${SONGS_DIR}/temp"
 DRY_RUN=0
 
@@ -134,14 +140,11 @@ if [ "$1" = "-n" ]; then
 fi
 
 if [ $# -eq 0 ]; then
-    while IFS= read -r F; do
-        sort_file "$F"
-    done <<EOF
-$(find "$TEMP_DIR" -maxdepth 1 -type f \
-    \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" \
-       -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) \
-    2>/dev/null)
-EOF
+    for EXT in flac mp3 opus ogg aac m4a FLAC MP3 OPUS OGG AAC M4A; do
+        for F in "${TEMP_DIR}"/*."$EXT"; do
+            [ -f "$F" ] && sort_file "$F"
+        done
+    done
 else
     for F in "$@"; do
         sort_file "$F"
