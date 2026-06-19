@@ -1,8 +1,17 @@
 #!/bin/sh
 
 DMENU="dmenu -i -vk"
-SONGS_DIR="/home/zukerman/songs"
-PLAYLISTS_DIR="${SONGS_DIR}/playlists"
+
+: "${XDG_CONFIG_HOME:=$HOME/.config}"
+: "${XDG_CACHE_HOME:=$HOME/.cache}"
+
+DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
+if [ -f "$DMUSIC_CONFIG" ]; then
+    . "$DMUSIC_CONFIG"
+fi
+
+: "${SONGS_DIR:=$HOME/songs}"
+: "${PLAYLISTS_DIR:=$SONGS_DIR/playlists}"
 
 if ! mpc > /dev/null 2>&1; then
     notify-send "MPD Error" "Music Player Daemon is not reachable!"
@@ -11,7 +20,7 @@ fi
 
 # history
 CURRENT_SONG=$(mpc current -f "%file%")
-HISTORY_FILE="/home/zukerman/.cache/mpd_history.txt"
+HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
 if [ -n "$CURRENT_SONG" ]; then
     mkdir -p "$(dirname "$HISTORY_FILE")"
     touch "$HISTORY_FILE"
@@ -126,7 +135,9 @@ case "$CHOICE" in
                 # exclude temp and playlists
                 LIST=$(ls -1 "$CURRENT_DIR" | grep -vE "^(temp|playlists|wishlist\.txt)$")
             else
-                LIST=$(ls -1 "$CURRENT_DIR")
+                DIR_OPTS="[Play Directory Now]
+[Add Directory to Queue]"
+                LIST=$(printf "%s\n%s" "$DIR_OPTS" "$(ls -1 "$CURRENT_DIR")")
             fi
             
             SELECTED=$(echo "$LIST" | $DMENU -l 20 -p "Library:")
@@ -142,6 +153,20 @@ case "$CHOICE" in
             elif [ $EXIT_CODE -eq 11 ] || [ $EXIT_CODE -eq 0 ]; then
                 [ -z "$SELECTED" ] && continue
                 
+                if [ "$SELECTED" = "[Play Directory Now]" ] || [ "$SELECTED" = "[Add Directory to Queue]" ]; then
+                    REL_TO_MUSIC_DIR=$(realpath --relative-to="${SONGS_DIR}" "$CURRENT_DIR")
+                    if [ "$SELECTED" = "[Play Directory Now]" ]; then
+                        mpc clear
+                        mpc add "$REL_TO_MUSIC_DIR"
+                        mpc play
+                        notify-send "MPD" "Playing directory: $(basename "$CURRENT_DIR")"
+                    else
+                        mpc add "$REL_TO_MUSIC_DIR"
+                        notify-send "MPD" "Added directory to queue: $(basename "$CURRENT_DIR")"
+                    fi
+                    break
+                fi
+
                 TARGET="${CURRENT_DIR}/${SELECTED}"
                 if [ -d "$TARGET" ]; then
                     CURRENT_DIR="$TARGET"
@@ -225,7 +250,7 @@ case "$CHOICE" in
         fi
         ;;
     "󱁴")
-        HISTORY_FILE="/home/zukerman/.cache/mpd_history.txt"
+        HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
         if [ -f "$HISTORY_FILE" ] && [ -s "$HISTORY_FILE" ]; then
             SONG=$(tac "$HISTORY_FILE" | awk '!seen[$0]++' | dmenu -i -l 20 -p "History:")
         else
@@ -269,9 +294,9 @@ case "$CHOICE" in
         [ -z "$SELECTED" ] && exit 0
 
         if [ "$SELECTED" = "$SORT_MENU" ]; then
-            /opt/scripts/msort
+            msort
         else
-            /opt/scripts/msort "$SELECTED"
+            msort "$SELECTED"
         fi
         ;;
     "󰐕")

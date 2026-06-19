@@ -10,8 +10,14 @@ if [ -z "$API_KEY" ]; then
 fi
 API_URL="http://ws.audioscrobbler.com/2.0/"
 
-# wishlist path
-WISHLIST="/home/zukerman/songs/wishlist.txt"
+: "${XDG_CONFIG_HOME:=$HOME/.config}"
+DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
+if [ -f "$DMUSIC_CONFIG" ]; then
+    . "$DMUSIC_CONFIG"
+fi
+
+: "${SONGS_DIR:=$HOME/songs}"
+WISHLIST="${SONGS_DIR}/wishlist.txt"
 
 # check dependencies
 if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
