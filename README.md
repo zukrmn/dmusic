@@ -4,7 +4,10 @@ A highly efficient, minimalist, and keyboard-centric music playback and discover
 
 ![dmusic demo](assets/dmusic-demo.gif)
 
-Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, POSIX-compliant shell scripts and native utilities to manage music playback (`mpc` / `mpd`), interactive directory/playlist navigation (via a patched `dmenu`), and music discovery (`curl`, `jq`, `mpv`).
+Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, POSIX-compliant shell scripts and native utilities to manage music playback (`mpc` / `mpd`), interactive directory/playlist navigation (via `dmenu`), and music discovery (`curl`, `jq`, `mpv`).
+
+> [!NOTE]
+> **Modularity & Optional Features:** `dmusic` is composed of three standalone scripts. You can use the main player (`dmpc`) independently without the discovery (`smd`) or sorting (`msort`) tools. Furthermore, the `dmenu` vim-keys patch and stream preview dependencies are entirely **optional**.
 
 ## Components
 
@@ -47,25 +50,30 @@ Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, 
 
 ## Dependencies
 
-This workflow relies on the following packages. Here is how each tool is utilized:
+This workflow relies on the following packages.
 
+### Core (Required for `dmpc`)
 - **`mpd`**: Music Player Daemon (the core audio backend for your local library).
 - **`mpc`**: Command-line client for MPD (used by `dmpc` to control playback and queues).
-- **`mpv`**: Minimalist media player (used by `smd` to play background stream previews without video).
-- **`yt-dlp`**: Video/audio downloader (used as the streaming backend by `mpv` to fetch audio directly).
-- **`ffmpeg`**: Multimedia framework (provides `ffprobe`, used by `msort` to read embedded audio tags).
-- **`curl`**: Network request utility (used by `smd` to communicate with the Last.fm API).
-- **`jq`**: Lightweight JSON processor (used by `smd` and `msort` to parse structured data).
-- **`xclip`**: Command line interface to the X11 clipboard (used by `smd` to copy track names).
+- **`dmenu`**: The menu interface. Works out of the box with stock `dmenu`, or you can use the optional patch for vim-like navigation.
+- **Fonts**: The scripts use Nerd Font icons (specifically `nf-md` icons) for the interface. Ensure you have a compatible font installed (e.g., `nerd-fonts`).
 
-On Void Linux, you can install them via `xbps-install`:
+### Optional (Required for `smd` discovery)
+- **`curl`**: Network request utility to communicate with the Last.fm API.
+- **`jq`**: Lightweight JSON processor to parse Last.fm data.
+- **`mpv`**: Minimalist media player used to play background stream previews.
+- **`yt-dlp`**: Video/audio downloader used as the streaming backend by `mpv`.
+- **`xclip`**: Command line interface to the X11 clipboard to copy track names.
+
+### Optional (Required for `msort` sorting)
+- **`ffmpeg`**: Multimedia framework (provides `ffprobe` to read embedded audio tags).
+- **`jq`**: Used to parse `ffprobe` metadata output.
+
+On Void Linux, you can install the complete suite via `xbps-install`:
 
 ```bash
 sudo xbps-install -S mpd mpc mpv yt-dlp ffmpeg curl jq xclip
 ```
-
-- **dmenu**: You must build `dmenu` from source using the provided patch.
-- **Fonts**: The scripts use Nerd Font icons (specifically `nf-md` icons) for the interface. Ensure you have a compatible font installed (e.g., `nerd-fonts`).
 
 ## Installation
 
