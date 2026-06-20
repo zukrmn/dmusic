@@ -87,7 +87,7 @@ patch -p1 -i /path/to/dmusic/dmenu-navkeys-5.4.diff
 sudo make clean install
 ```
 
-If you apply this patch, you must explicitly enable it in your config file (see section 3). Se não, o script usará um `dmenu` original (vanilla).
+If you apply this patch, you must explicitly enable it in your config file (see section 3). Otherwise, the scripts will use a stock (vanilla) `dmenu`.
 
 ### 2. Install Scripts
 Place the scripts somewhere in your `$PATH` (e.g., `~/.local/bin` or `/opt/scripts`):
