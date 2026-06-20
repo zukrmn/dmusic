@@ -109,8 +109,11 @@ case "$CHOICE" in
         notify-send "MPD" "Queue shuffled successfully."
         ;;
     "󰕮")
-        QUEUE_OPTIONS="[..] Go Back
-[Clear Queue]"
+        QUEUE_OPTIONS="[Clear Queue]"
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            QUEUE_OPTIONS="[..] Go Back
+${QUEUE_OPTIONS}"
+        fi
         QUEUE_LIST=$(mpc playlist -f "%position% %artist% - %title%")
         SELECTED=$(printf "%s\n%s\n" "$QUEUE_OPTIONS" "$QUEUE_LIST" | $DMENU -l 20 -p "Queue:")
         [ -z "$SELECTED" ] && exec "$0"
@@ -224,7 +227,10 @@ ${DIR_OPTS}"
         done
         ;;
     "󰲹")
-        MENU="[..] Go Back\n[Create Playlist]\n"
+        MENU="[Create Playlist]\n"
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            MENU="[..] Go Back\n${MENU}"
+        fi
         for PDIR in "${PLAYLISTS_DIR}"/*/; do
             [ -d "$PDIR" ] || continue
             MENU="${MENU}$(basename "$PDIR")\n"
@@ -278,10 +284,16 @@ ${DIR_OPTS}"
     "󱁴")
         HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
         if [ -f "$HISTORY_FILE" ] && [ -s "$HISTORY_FILE" ]; then
-            SONG=$(printf "[..] Go Back\n%s" "$(tac "$HISTORY_FILE" | awk '!seen[$0]++')" | $DMENU -l 20 -p "History:")
+            SONG_LIST=$(tac "$HISTORY_FILE" | awk '!seen[$0]++')
         else
-            SONG=$(printf "[..] Go Back\n%s" "$(mpc listall)" | $DMENU -l 20 -p "History:")
+            SONG_LIST=$(mpc listall)
         fi
+        
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            SONG_LIST=$(printf "[..] Go Back\n%s" "$SONG_LIST")
+        fi
+        
+        SONG=$(printf "%s" "$SONG_LIST" | $DMENU -l 20 -p "History:")
         [ -z "$SONG" ] && exec "$0"
         [ "$SONG" = "[..] Go Back" ] && exec "$0"
 
@@ -316,7 +328,10 @@ ${DIR_OPTS}"
         fi
 
         COUNT=$(printf '%s\n' "$TEMP_FILES" | wc -l)
-        SORT_MENU="[..] Go Back\nSort All (${COUNT} file(s))"
+        SORT_MENU="Sort All (${COUNT} file(s))"
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            SORT_MENU="[..] Go Back\n${SORT_MENU}"
+        fi
         SELECTED=$(printf '%b\n%s\n' "$SORT_MENU" "$TEMP_FILES" \
             | $DMENU -l 20 -p "Sort temp/:")
         [ -z "$SELECTED" ] && exec "$0"
@@ -350,7 +365,10 @@ ${DIR_OPTS}"
         # interactive loop
         while true; do
             # build menu lines
-            MENU="[..] Go Back\n"
+            MENU=""
+            if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+                MENU="[..] Go Back\n"
+            fi
             for PDIR in "$PLAYLISTS_DIR"/*/; do
                 [ -d "$PDIR" ] || continue
                 PNAME=$(basename "$PDIR")
