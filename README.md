@@ -69,8 +69,8 @@ sudo xbps-install -S mpd mpc mpv yt-dlp ffmpeg curl jq xclip
 
 ## Installation
 
-### 1. Patch and Build dmenu
-Clone the dmenu source code (version 5.4 or later) and apply the included patch:
+### 1. Patch and Build dmenu (Optional but Recommended)
+For a better experience, you can build `dmenu` with the provided patch to enable vim-like directory traversal (`h`/`l` to go back and forth) and avoid the `[..] Go Back` artificial menu item.
 
 ```bash
 git clone https://git.suckless.org/dmenu
@@ -78,6 +78,8 @@ cd dmenu
 patch -p1 -i /path/to/dmusic/dmenu-navkeys-5.4.diff
 sudo make clean install
 ```
+
+If you apply this patch, you must explicitly enable it in your config file (see section 3). Se não, o script usará um `dmenu` original (vanilla).
 
 ### 2. Install Scripts
 Place the scripts somewhere in your `$PATH` (e.g., `~/.local/bin` or `/opt/scripts`):
@@ -100,10 +102,13 @@ afterfinish = /path/to/msort "$"
 export LASTFM_API_KEY="your_api_key_here"
 ```
 
-**Global Paths:** The scripts respect the `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` environment variables. You can override the default paths by creating a config file at `~/.config/dmusic/config`:
+**Global Paths & Toggles:** The scripts respect the `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` environment variables. You can override the default paths and enable the `dmenu` patch by creating a config file at `~/.config/dmusic/config`:
 ```bash
 # ~/.config/dmusic/config
 SONGS_DIR="/path/to/your/custom/songs"
+
+# Set to 1 if you installed the dmenu-navkeys-5.4.diff patch
+DMUSIC_DMENU_PATCHED=1
 ```
 
 By default, if no config is provided, the scripts assume:

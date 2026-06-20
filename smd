@@ -1,7 +1,4 @@
 #!/bin/sh
-# ui command
-DMENU="dmenu -i -vk"
-
 # api credentials
 API_KEY="${LASTFM_API_KEY}"
 if [ -z "$API_KEY" ]; then
@@ -14,6 +11,13 @@ API_URL="http://ws.audioscrobbler.com/2.0/"
 DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
 if [ -f "$DMUSIC_CONFIG" ]; then
     . "$DMUSIC_CONFIG"
+fi
+
+: "${DMUSIC_DMENU_PATCHED:=0}"
+if [ "$DMUSIC_DMENU_PATCHED" = "1" ]; then
+    DMENU="dmenu -i -vk"
+else
+    DMENU="dmenu -i"
 fi
 
 : "${SONGS_DIR:=$HOME/songs}"
@@ -156,7 +160,7 @@ if [ -z "$RESULT" ]; then
 fi
 
 # prompt user
-SELECTED=$(echo "$RESULT" | dmenu -i -vk -l 20 -p "Recommendations:")
+SELECTED=$(echo "$RESULT" | $DMENU -l 20 -p "Recommendations:")
 [ -z "$SELECTED" ] && exit 0
 
 # prompt action
@@ -164,7 +168,7 @@ ACTION_MENU="󰅍 Copy to Clipboard (Soulseek)
  Stream Preview (mpv/yt-dlp)
 󰆓 Add to Wishlist"
 
-ACTION=$(echo "$ACTION_MENU" | dmenu -i -vk)
+ACTION=$(echo "$ACTION_MENU" | $DMENU)
 
 case "$ACTION" in
     *Copy*)

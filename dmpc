@@ -1,13 +1,18 @@
 #!/bin/sh
 
-DMENU="dmenu -i -vk"
-
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
 
 DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
 if [ -f "$DMUSIC_CONFIG" ]; then
     . "$DMUSIC_CONFIG"
+fi
+
+: "${DMUSIC_DMENU_PATCHED:=0}"
+if [ "$DMUSIC_DMENU_PATCHED" = "1" ]; then
+    DMENU="dmenu -i -vk"
+else
+    DMENU="dmenu -i"
 fi
 
 : "${SONGS_DIR:=$HOME/songs}"
@@ -137,6 +142,10 @@ case "$CHOICE" in
             else
                 DIR_OPTS="[Play Directory Now]
 [Add Directory to Queue]"
+                if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+                    DIR_OPTS="[..] Go Back
+${DIR_OPTS}"
+                fi
                 LIST=$(printf "%s\n%s" "$DIR_OPTS" "$(ls -1 "$CURRENT_DIR")")
             fi
             
@@ -153,6 +162,13 @@ case "$CHOICE" in
             elif [ $EXIT_CODE -eq 11 ] || [ $EXIT_CODE -eq 0 ]; then
                 [ -z "$SELECTED" ] && continue
                 
+                if [ "$SELECTED" = "[..] Go Back" ]; then
+                    if [ "$CURRENT_DIR" != "$SONGS_DIR" ]; then
+                        CURRENT_DIR=$(dirname "$CURRENT_DIR")
+                    fi
+                    continue
+                fi
+
                 if [ "$SELECTED" = "[Play Directory Now]" ] || [ "$SELECTED" = "[Add Directory to Queue]" ]; then
                     REL_TO_MUSIC_DIR=$(realpath --relative-to="${SONGS_DIR}" "$CURRENT_DIR")
                     if [ "$SELECTED" = "[Play Directory Now]" ]; then
