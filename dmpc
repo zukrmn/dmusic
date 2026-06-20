@@ -1,13 +1,18 @@
 #!/bin/sh
 
-DMENU="dmenu -i -vk"
-
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
 
 DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
 if [ -f "$DMUSIC_CONFIG" ]; then
     . "$DMUSIC_CONFIG"
+fi
+
+: "${DMUSIC_DMENU_PATCHED:=0}"
+if [ "$DMUSIC_DMENU_PATCHED" = "1" ]; then
+    DMENU="dmenu -i -vk"
+else
+    DMENU="dmenu -i"
 fi
 
 : "${SONGS_DIR:=$HOME/songs}"
@@ -105,9 +110,14 @@ case "$CHOICE" in
         ;;
     "󰕮")
         QUEUE_OPTIONS="[Clear Queue]"
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            QUEUE_OPTIONS="[..] Go Back
+${QUEUE_OPTIONS}"
+        fi
         QUEUE_LIST=$(mpc playlist -f "%position% %artist% - %title%")
         SELECTED=$(printf "%s\n%s\n" "$QUEUE_OPTIONS" "$QUEUE_LIST" | $DMENU -l 20 -p "Queue:")
-        [ -z "$SELECTED" ] && exit 0
+        [ -z "$SELECTED" ] && exec "$0"
+        [ "$SELECTED" = "[..] Go Back" ] && exec "$0"
 
         if [ "$SELECTED" = "[Clear Queue]" ]; then
             mpc clear
@@ -134,9 +144,16 @@ case "$CHOICE" in
             if [ "$CURRENT_DIR" = "$SONGS_DIR" ]; then
                 # exclude temp and playlists
                 LIST=$(ls -1 "$CURRENT_DIR" | grep -vE "^(temp|playlists|wishlist\.txt)$")
+                if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+                    LIST=$(printf "[..] Go Back\n%s" "$LIST")
+                fi
             else
                 DIR_OPTS="[Play Directory Now]
 [Add Directory to Queue]"
+                if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+                    DIR_OPTS="[..] Go Back
+${DIR_OPTS}"
+                fi
                 LIST=$(printf "%s\n%s" "$DIR_OPTS" "$(ls -1 "$CURRENT_DIR")")
             fi
             
@@ -148,11 +165,22 @@ case "$CHOICE" in
             elif [ $EXIT_CODE -eq 10 ]; then
                 if [ "$CURRENT_DIR" != "$SONGS_DIR" ]; then
                     CURRENT_DIR=$(dirname "$CURRENT_DIR")
+                    continue
+                else
+                    exec "$0"
                 fi
-                continue
             elif [ $EXIT_CODE -eq 11 ] || [ $EXIT_CODE -eq 0 ]; then
                 [ -z "$SELECTED" ] && continue
                 
+                if [ "$SELECTED" = "[..] Go Back" ]; then
+                    if [ "$CURRENT_DIR" != "$SONGS_DIR" ]; then
+                        CURRENT_DIR=$(dirname "$CURRENT_DIR")
+                        continue
+                    else
+                        exec "$0"
+                    fi
+                fi
+
                 if [ "$SELECTED" = "[Play Directory Now]" ] || [ "$SELECTED" = "[Add Directory to Queue]" ]; then
                     REL_TO_MUSIC_DIR=$(realpath --relative-to="${SONGS_DIR}" "$CURRENT_DIR")
                     if [ "$SELECTED" = "[Play Directory Now]" ]; then
@@ -200,12 +228,16 @@ case "$CHOICE" in
         ;;
     "󰲹")
         MENU="[Create Playlist]\n"
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            MENU="[..] Go Back\n${MENU}"
+        fi
         for PDIR in "${PLAYLISTS_DIR}"/*/; do
             [ -d "$PDIR" ] || continue
             MENU="${MENU}$(basename "$PDIR")\n"
         done
         SELECTED_PLAYLIST=$(printf "%b" "$MENU" | $DMENU -l 15 -p "Playlists:")
-        [ -z "$SELECTED_PLAYLIST" ] && exit 0
+        [ -z "$SELECTED_PLAYLIST" ] && exec "$0"
+        [ "$SELECTED_PLAYLIST" = "[..] Go Back" ] && exec "$0"
 
         if [ "$SELECTED_PLAYLIST" = "[Create Playlist]" ]; then
             NEW_PNAME=$(echo "" | dmenu -i -p "New Playlist Name:")
@@ -252,10 +284,18 @@ case "$CHOICE" in
     "󱁴")
         HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
         if [ -f "$HISTORY_FILE" ] && [ -s "$HISTORY_FILE" ]; then
-            SONG=$(tac "$HISTORY_FILE" | awk '!seen[$0]++' | dmenu -i -l 20 -p "History:")
+            SONG_LIST=$(tac "$HISTORY_FILE" | awk '!seen[$0]++')
         else
-            SONG=$(mpc listall | dmenu -i -l 20 -p "History:")
+            SONG_LIST=$(mpc listall)
         fi
+        
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            SONG_LIST=$(printf "[..] Go Back\n%s" "$SONG_LIST")
+        fi
+        
+        SONG=$(printf "%s" "$SONG_LIST" | $DMENU -l 20 -p "History:")
+        [ -z "$SONG" ] && exec "$0"
+        [ "$SONG" = "[..] Go Back" ] && exec "$0"
 
         if [ -n "$SONG" ]; then
             PLAYLIST_POS=$(mpc playlist -f "%file%" | grep -nxF "$SONG" | head -n 1 | cut -d: -f1)
@@ -289,11 +329,15 @@ case "$CHOICE" in
 
         COUNT=$(printf '%s\n' "$TEMP_FILES" | wc -l)
         SORT_MENU="Sort All (${COUNT} file(s))"
-        SELECTED=$(printf '%s\n%s\n' "$SORT_MENU" "$TEMP_FILES" \
+        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+            SORT_MENU="[..] Go Back\n${SORT_MENU}"
+        fi
+        SELECTED=$(printf '%b\n%s\n' "$SORT_MENU" "$TEMP_FILES" \
             | $DMENU -l 20 -p "Sort temp/:")
-        [ -z "$SELECTED" ] && exit 0
+        [ -z "$SELECTED" ] && exec "$0"
+        [ "$SELECTED" = "[..] Go Back" ] && exec "$0"
 
-        if [ "$SELECTED" = "$SORT_MENU" ]; then
+        if [ "$SELECTED" = "Sort All (${COUNT} file(s))" ]; then
             msort
         else
             msort "$SELECTED"
@@ -322,6 +366,9 @@ case "$CHOICE" in
         while true; do
             # build menu lines
             MENU=""
+            if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+                MENU="[..] Go Back\n"
+            fi
             for PDIR in "$PLAYLISTS_DIR"/*/; do
                 [ -d "$PDIR" ] || continue
                 PNAME=$(basename "$PDIR")
@@ -338,7 +385,8 @@ case "$CHOICE" in
             fi
 
             SELECTED=$(printf "%b" "$MENU" | $DMENU -l 15 -p "Playlists ($(basename "$FILE")):")
-            [ -z "$SELECTED" ] && break
+            [ -z "$SELECTED" ] && exec "$0"
+            [ "$SELECTED" = "[..] Go Back" ] && exec "$0"
 
             # extract playlist name
             PNAME=$(echo "$SELECTED" | sed 's/^[󰄲󰄱 ]* *//')
