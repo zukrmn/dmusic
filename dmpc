@@ -139,6 +139,9 @@ case "$CHOICE" in
             if [ "$CURRENT_DIR" = "$SONGS_DIR" ]; then
                 # exclude temp and playlists
                 LIST=$(ls -1 "$CURRENT_DIR" | grep -vE "^(temp|playlists|wishlist\.txt)$")
+                if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
+                    LIST=$(printf "[..] Go Back\n%s" "$LIST")
+                fi
             else
                 DIR_OPTS="[Play Directory Now]
 [Add Directory to Queue]"
@@ -157,16 +160,20 @@ ${DIR_OPTS}"
             elif [ $EXIT_CODE -eq 10 ]; then
                 if [ "$CURRENT_DIR" != "$SONGS_DIR" ]; then
                     CURRENT_DIR=$(dirname "$CURRENT_DIR")
+                    continue
+                else
+                    exec "$0"
                 fi
-                continue
             elif [ $EXIT_CODE -eq 11 ] || [ $EXIT_CODE -eq 0 ]; then
                 [ -z "$SELECTED" ] && continue
                 
                 if [ "$SELECTED" = "[..] Go Back" ]; then
                     if [ "$CURRENT_DIR" != "$SONGS_DIR" ]; then
                         CURRENT_DIR=$(dirname "$CURRENT_DIR")
+                        continue
+                    else
+                        exec "$0"
                     fi
-                    continue
                 fi
 
                 if [ "$SELECTED" = "[Play Directory Now]" ] || [ "$SELECTED" = "[Add Directory to Queue]" ]; then
