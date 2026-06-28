@@ -42,7 +42,7 @@ else
     TOGGLE_LABEL="󰐊"
 fi
 
-REPEAT_STATUS=$(mpc | awk '/repeat:/ {print $4, $8}')
+REPEAT_STATUS=$(mpc | awk '/repeat:/ { for(i=1; i<=NF; i++) { if ($i == "repeat:") r = $(i+1); if ($i == "single:") s = $(i+1) } print r, s }')
 case "$REPEAT_STATUS" in
     "on on"|"off on")
         REPEAT_LABEL="󰑘"
@@ -317,7 +317,7 @@ ${DIR_OPTS}"
         ;;
     "󰉒")
         # collect audio files waiting in temp/
-        TEMP_FILES=$(find "${SONGS_DIR}/temp" -maxdepth 1 -type f \
+        TEMP_FILES=$(find "${SONGS_DIR}/temp" -type f \
             \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" \
                -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) \
             2>/dev/null)

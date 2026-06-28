@@ -140,17 +140,32 @@ if [ "$1" = "-n" ]; then
 fi
 
 if [ $# -eq 0 ]; then
-    for EXT in flac mp3 opus ogg aac m4a FLAC MP3 OPUS OGG AAC M4A; do
-        for F in "${TEMP_DIR}"/*."$EXT"; do
-            [ -f "$F" ] && sort_file "$F"
-        done
+    find "${TEMP_DIR}" -type f \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) | while IFS= read -r F; do
+        sort_file "$F"
     done
 else
     for F in "$@"; do
-        sort_file "$F"
+        if [ -d "$F" ]; then
+            find "$F" -type f \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) | while IFS= read -r FILE; do
+                sort_file "$FILE"
+            done
+        elif [ -f "$F" ]; then
+            sort_file "$F"
+        else
+            log "not a file or directory: $F"
+        fi
     done
 fi
 
 if [ "$DRY_RUN" -eq 0 ]; then
+    if [ $# -eq 0 ]; then
+        find "${TEMP_DIR}" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+    else
+        for F in "$@"; do
+            if [ -d "$F" ]; then
+                find "$F" -type d -empty -delete 2>/dev/null || true
+            fi
+        done
+    fi
     mpc update >/dev/null 2>&1 || true
 fi
