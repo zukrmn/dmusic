@@ -4,43 +4,31 @@
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
 
 DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
-if [ -f "$DMUSIC_CONFIG" ]; then
-    . "$DMUSIC_CONFIG"
-fi
+[ -f "$DMUSIC_CONFIG" ] && . "$DMUSIC_CONFIG"
 
 : "${DMUSIC_DMENU_PATCHED:=0}"
-if [ "$DMUSIC_DMENU_PATCHED" = "1" ]; then
-    DMENU="dmenu -i -vk"
-else
-    DMENU="dmenu -i"
-fi
+[ "$DMUSIC_DMENU_PATCHED" = "1" ] && DMENU="dmenu -i -vk" || DMENU="dmenu -i"
 
 : "${SONGS_DIR:=$HOME/songs}"
 : "${PLAYLISTS_DIR:=$SONGS_DIR/playlists}"
 
-if ! mpc > /dev/null 2>&1; then
+mpc > /dev/null 2>&1 || {
     notify-send "MPD Error" "Music Player Daemon is not reachable!"
     exit 1
-fi
+}
 
 # history
 CURRENT_SONG=$(mpc current -f "%file%")
 HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
-if [ -n "$CURRENT_SONG" ]; then
-    mkdir -p "$(dirname "$HISTORY_FILE")"
+[ -n "$CURRENT_SONG" ] && {
+    mkdir -p "${HISTORY_FILE%/*}"
     touch "$HISTORY_FILE"
     LAST_RECORDED=$(tail -n 1 "$HISTORY_FILE")
-    if [ "$CURRENT_SONG" != "$LAST_RECORDED" ]; then
-        echo "$CURRENT_SONG" >> "$HISTORY_FILE"
-    fi
-fi
+    [ "$CURRENT_SONG" != "$LAST_RECORDED" ] && echo "$CURRENT_SONG" >> "$HISTORY_FILE"
+}
 
 STATUS=$(mpc status | awk 'NR==2 {print $1}')
-if [ "$STATUS" = "[playing]" ]; then
-    TOGGLE_LABEL="󰏤"
-else
-    TOGGLE_LABEL="󰐊"
-fi
+[ "$STATUS" = "[playing]" ] && TOGGLE_LABEL="󰏤" || TOGGLE_LABEL="󰐊"
 
 REPEAT_STATUS=$(mpc | awk '/repeat:/ { for(i=1; i<=NF; i++) { if ($i == "repeat:") r = $(i+1); if ($i == "single:") s = $(i+1) } print r, s }')
 case "$REPEAT_STATUS" in
@@ -68,10 +56,8 @@ ${REPEAT_LABEL}
 󰋼
 󰉒"
 
-if [ -n "$CURRENT_SONG" ]; then
-    OPTIONS="${OPTIONS}
+[ -n "$CURRENT_SONG" ] && OPTIONS="${OPTIONS}
 󰐕"
-fi
 
 CHOICE=$(echo "$OPTIONS" | $DMENU)
 
@@ -110,21 +96,19 @@ case "$CHOICE" in
         ;;
     "󰕮")
         QUEUE_OPTIONS="[Clear Queue]"
-        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
-            QUEUE_OPTIONS="[..] Go Back
+        [ "$DMUSIC_DMENU_PATCHED" != "1" ] && QUEUE_OPTIONS="[..] Go Back
 ${QUEUE_OPTIONS}"
-        fi
         QUEUE_LIST=$(mpc playlist -f "%position% %artist% - %title%")
         SELECTED=$(printf "%s\n%s\n" "$QUEUE_OPTIONS" "$QUEUE_LIST" | $DMENU -l 20 -p "Queue:")
         [ -z "$SELECTED" ] && exec "$0"
         [ "$SELECTED" = "[..] Go Back" ] && exec "$0"
 
-        if [ "$SELECTED" = "[Clear Queue]" ]; then
+        [ "$SELECTED" = "[Clear Queue]" ] && {
             mpc clear
             notify-send "MPD" "Queue cleared"
-        else
-            INDEX=$(echo "$SELECTED" | awk '{print $1}')
-            if [ -n "$INDEX" ]; then
+        } || {
+            INDEX="${SELECTED%% *}"
+            [ -n "$INDEX" ] && {
                 ACTION=$(printf "Play\nRemove\n" | $DMENU -p "Action:")
                 case "$ACTION" in
                     "Play")
@@ -135,117 +119,101 @@ ${QUEUE_OPTIONS}"
                         notify-send "MPD" "Removed song $INDEX from queue"
                         ;;
                 esac
-            fi
-        fi
+            }
+        }
         ;;
     "󰎆")
         CURRENT_DIR="${SONGS_DIR}"
         while true; do
-            if [ "$CURRENT_DIR" = "$SONGS_DIR" ]; then
+            [ "$CURRENT_DIR" = "$SONGS_DIR" ] && {
                 # exclude temp and playlists
                 LIST=$(ls -1 "$CURRENT_DIR" | grep -vE "^(temp|playlists|wishlist\.txt)$")
-                if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
-                    LIST=$(printf "[..] Go Back\n%s" "$LIST")
-                fi
-            else
+                [ "$DMUSIC_DMENU_PATCHED" != "1" ] && LIST=$(printf "[..] Go Back\n%s" "$LIST")
+                :
+            } || {
                 DIR_OPTS="[Play Directory Now]
 [Add Directory to Queue]"
-                if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
-                    DIR_OPTS="[..] Go Back
+                [ "$DMUSIC_DMENU_PATCHED" != "1" ] && DIR_OPTS="[..] Go Back
 ${DIR_OPTS}"
-                fi
                 LIST=$(printf "%s\n%s" "$DIR_OPTS" "$(ls -1 "$CURRENT_DIR")")
-            fi
+            }
             
             SELECTED=$(echo "$LIST" | $DMENU -l 20 -p "Library:")
             EXIT_CODE=$?
             
-            if [ $EXIT_CODE -eq 1 ]; then
-                exit 0
-            elif [ $EXIT_CODE -eq 10 ]; then
-                if [ "$CURRENT_DIR" != "$SONGS_DIR" ]; then
-                    CURRENT_DIR=$(dirname "$CURRENT_DIR")
-                    continue
-                else
-                    exec "$0"
-                fi
-            elif [ $EXIT_CODE -eq 11 ] || [ $EXIT_CODE -eq 0 ]; then
+            [ $EXIT_CODE -eq 1 ] && exit 0
+            [ $EXIT_CODE -eq 10 ] && {
+                [ "$CURRENT_DIR" != "$SONGS_DIR" ] && { CURRENT_DIR="${CURRENT_DIR%/*}"; continue; } || exec "$0"
+            }
+            { [ $EXIT_CODE -eq 11 ] || [ $EXIT_CODE -eq 0 ]; } && {
                 [ -z "$SELECTED" ] && continue
                 
-                if [ "$SELECTED" = "[..] Go Back" ]; then
-                    if [ "$CURRENT_DIR" != "$SONGS_DIR" ]; then
-                        CURRENT_DIR=$(dirname "$CURRENT_DIR")
-                        continue
-                    else
-                        exec "$0"
-                    fi
-                fi
+                [ "$SELECTED" = "[..] Go Back" ] && {
+                    [ "$CURRENT_DIR" != "$SONGS_DIR" ] && { CURRENT_DIR="${CURRENT_DIR%/*}"; continue; } || exec "$0"
+                }
 
-                if [ "$SELECTED" = "[Play Directory Now]" ] || [ "$SELECTED" = "[Add Directory to Queue]" ]; then
+                { [ "$SELECTED" = "[Play Directory Now]" ] || [ "$SELECTED" = "[Add Directory to Queue]" ]; } && {
                     REL_TO_MUSIC_DIR=$(realpath --relative-to="${SONGS_DIR}" "$CURRENT_DIR")
-                    if [ "$SELECTED" = "[Play Directory Now]" ]; then
+                    [ "$SELECTED" = "[Play Directory Now]" ] && {
                         mpc clear
                         mpc add "$REL_TO_MUSIC_DIR"
                         mpc play
-                        notify-send "MPD" "Playing directory: $(basename "$CURRENT_DIR")"
-                    else
+                        notify-send "MPD" "Playing directory: ${CURRENT_DIR##*/}"
+                    } || {
                         mpc add "$REL_TO_MUSIC_DIR"
-                        notify-send "MPD" "Added directory to queue: $(basename "$CURRENT_DIR")"
-                    fi
+                        notify-send "MPD" "Added directory to queue: ${CURRENT_DIR##*/}"
+                    }
                     break
-                fi
+                }
 
                 TARGET="${CURRENT_DIR}/${SELECTED}"
-                if [ -d "$TARGET" ]; then
+                [ -d "$TARGET" ] && {
                     CURRENT_DIR="$TARGET"
                     continue
-                elif [ -f "$TARGET" ]; then
-                    REL_TO_MUSIC_DIR=$(realpath --relative-to="${SONGS_DIR}" "$TARGET")
-                    
-                    ACTION=$(printf "Play Now\nAdd to Queue\nInsert Next\n" | $DMENU -p "Action:")
-                    case "$ACTION" in
-                        "Play Now")
-                            if [ -z "$(mpc current)" ]; then
-                                mpc add "$REL_TO_MUSIC_DIR" && mpc play
-                            else
-                                mpc insert "$REL_TO_MUSIC_DIR" && mpc next
-                            fi
-                            notify-send "MPD Playing" "$(basename "$REL_TO_MUSIC_DIR")"
-                            ;;
-                        "Add to Queue")
-                            mpc add "$REL_TO_MUSIC_DIR"
-                            notify-send "MPD" "Added to queue: $(basename "$REL_TO_MUSIC_DIR")"
-                            ;;
-                        "Insert Next")
-                            mpc insert "$REL_TO_MUSIC_DIR"
-                            notify-send "MPD" "Inserted next: $(basename "$REL_TO_MUSIC_DIR")"
-                            ;;
-                    esac
-                    break
-                fi
-            fi
+                } || {
+                    [ -f "$TARGET" ] && {
+                        REL_TO_MUSIC_DIR=$(realpath --relative-to="${SONGS_DIR}" "$TARGET")
+                        
+                        ACTION=$(printf "Play Now\nAdd to Queue\nInsert Next\n" | $DMENU -p "Action:")
+                        case "$ACTION" in
+                            "Play Now")
+                                [ -z "$(mpc current)" ] && { mpc add "$REL_TO_MUSIC_DIR" && mpc play; } || { mpc insert "$REL_TO_MUSIC_DIR" && mpc next; }
+                                notify-send "MPD Playing" "${REL_TO_MUSIC_DIR##*/}"
+                                ;;
+                            "Add to Queue")
+                                mpc add "$REL_TO_MUSIC_DIR"
+                                notify-send "MPD" "Added to queue: ${REL_TO_MUSIC_DIR##*/}"
+                                ;;
+                            "Insert Next")
+                                mpc insert "$REL_TO_MUSIC_DIR"
+                                notify-send "MPD" "Inserted next: ${REL_TO_MUSIC_DIR##*/}"
+                                ;;
+                        esac
+                        break
+                    }
+                }
+            }
         done
         ;;
     "󰲹")
         MENU="[Create Playlist]\n"
-        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
-            MENU="[..] Go Back\n${MENU}"
-        fi
+        [ "$DMUSIC_DMENU_PATCHED" != "1" ] && MENU="[..] Go Back\n${MENU}"
         for PDIR in "${PLAYLISTS_DIR}"/*/; do
             [ -d "$PDIR" ] || continue
-            MENU="${MENU}$(basename "$PDIR")\n"
+            PDIR_TRIM="${PDIR%/}"
+            MENU="${MENU}${PDIR_TRIM##*/}\n"
         done
         SELECTED_PLAYLIST=$(printf "%b" "$MENU" | $DMENU -l 15 -p "Playlists:")
         [ -z "$SELECTED_PLAYLIST" ] && exec "$0"
         [ "$SELECTED_PLAYLIST" = "[..] Go Back" ] && exec "$0"
 
-        if [ "$SELECTED_PLAYLIST" = "[Create Playlist]" ]; then
+        [ "$SELECTED_PLAYLIST" = "[Create Playlist]" ] && {
             NEW_PNAME=$(echo "" | dmenu -i -p "New Playlist Name:")
-            if [ -n "$NEW_PNAME" ]; then
+            [ -n "$NEW_PNAME" ] && {
                 mkdir -p "${PLAYLISTS_DIR}/${NEW_PNAME}"
                 notify-send "MPD" "Playlist '${NEW_PNAME}' created"
-            fi
-        else
+            }
+        } || {
             ACTION=$(printf "Load (Append)\nLoad (Play Now)\nDelete Playlist\n" | $DMENU -p "Action:")
             PDIR="${PLAYLISTS_DIR}/${SELECTED_PLAYLIST}"
             case "$ACTION" in
@@ -273,47 +241,34 @@ ${DIR_OPTS}"
                     ;;
                 "Delete Playlist")
                     CONFIRM=$(printf "No\nYes\n" | $DMENU -p "Delete playlist '${SELECTED_PLAYLIST}'?")
-                    if [ "$CONFIRM" = "Yes" ]; then
+                    [ "$CONFIRM" = "Yes" ] && {
                         rm -rf "$PDIR"
                         notify-send "MPD" "Playlist '${SELECTED_PLAYLIST}' deleted"
-                    fi
+                    }
                     ;;
             esac
-        fi
+        }
         ;;
     "󱁴")
         HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
-        if [ -f "$HISTORY_FILE" ] && [ -s "$HISTORY_FILE" ]; then
-            SONG_LIST=$(tac "$HISTORY_FILE" | awk '!seen[$0]++')
-        else
-            SONG_LIST=$(mpc listall)
-        fi
+        { [ -f "$HISTORY_FILE" ] && [ -s "$HISTORY_FILE" ]; } && SONG_LIST=$(tac "$HISTORY_FILE" | awk '!seen[$0]++') || SONG_LIST=$(mpc listall)
         
-        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
-            SONG_LIST=$(printf "[..] Go Back\n%s" "$SONG_LIST")
-        fi
+        [ "$DMUSIC_DMENU_PATCHED" != "1" ] && SONG_LIST=$(printf "[..] Go Back\n%s" "$SONG_LIST")
         
         SONG=$(printf "%s" "$SONG_LIST" | $DMENU -l 20 -p "History:")
         [ -z "$SONG" ] && exec "$0"
         [ "$SONG" = "[..] Go Back" ] && exec "$0"
 
-        if [ -n "$SONG" ]; then
-            PLAYLIST_POS=$(mpc playlist -f "%file%" | grep -nxF "$SONG" | head -n 1 | cut -d: -f1)
-            if [ -n "$PLAYLIST_POS" ]; then
-                mpc play "$PLAYLIST_POS"
-            else
-                mpc insert "$SONG" && mpc next
-            fi
+        [ -n "$SONG" ] && {
+            pos_raw=$(mpc playlist -f "%file%" | grep -nxF "$SONG" | head -n 1)
+            PLAYLIST_POS="${pos_raw%%:*}"
+            [ -n "$PLAYLIST_POS" ] && mpc play "$PLAYLIST_POS" || { mpc insert "$SONG" && mpc next; }
             notify-send "MPD Playing" "$(mpc current)"
-        fi
+        }
         ;;
     "󰋼")
         CURRENT=$(mpc current -f "%artist% - %title% (%album%)")
-        if [ -n "$CURRENT" ]; then
-            notify-send "Currently Playing" "$CURRENT"
-        else
-            notify-send "MPD" "No active song in queue."
-        fi
+        [ -n "$CURRENT" ] && notify-send "Currently Playing" "$CURRENT" || notify-send "MPD" "No active song in queue."
         ;;
     "󰉒")
         # collect audio files waiting in temp/
@@ -322,38 +277,32 @@ ${DIR_OPTS}"
                -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) \
             2>/dev/null)
 
-        if [ -z "$TEMP_FILES" ]; then
+        [ -z "$TEMP_FILES" ] && {
             notify-send "msort" "temp/ is empty, nothing to sort."
             exit 0
-        fi
+        }
 
         COUNT=$(printf '%s\n' "$TEMP_FILES" | wc -l)
         SORT_MENU="Sort All (${COUNT} file(s))"
-        if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
-            SORT_MENU="[..] Go Back\n${SORT_MENU}"
-        fi
+        [ "$DMUSIC_DMENU_PATCHED" != "1" ] && SORT_MENU="[..] Go Back\n${SORT_MENU}"
         SELECTED=$(printf '%b\n%s\n' "$SORT_MENU" "$TEMP_FILES" \
             | $DMENU -l 20 -p "Sort temp/:")
         [ -z "$SELECTED" ] && exec "$0"
         [ "$SELECTED" = "[..] Go Back" ] && exec "$0"
 
-        if [ "$SELECTED" = "Sort All (${COUNT} file(s))" ]; then
-            msort
-        else
-            msort "$SELECTED"
-        fi
+        [ "$SELECTED" = "Sort All (${COUNT} file(s))" ] && msort || msort "$SELECTED"
         ;;
     "󰐕")
         # playlist toggle
         FILE="$CURRENT_SONG"
-        if [ -z "$FILE" ]; then
+        [ -z "$FILE" ] && {
             notify-send "MPD" "No song currently playing."
             exit 0
-        fi
+        }
 
         # derive clean symlink name
-        ARTIST=$(echo "$FILE" | cut -d'/' -f1)
-        TRACK_BASE=$(basename "$FILE")
+        ARTIST="${FILE%%/*}"
+        TRACK_BASE="${FILE##*/}"
         LINK_NAME="${ARTIST} - ${TRACK_BASE}"
 
         # resolve absolute path
@@ -366,43 +315,38 @@ ${DIR_OPTS}"
         while true; do
             # build menu lines
             MENU=""
-            if [ "$DMUSIC_DMENU_PATCHED" != "1" ]; then
-                MENU="[..] Go Back\n"
-            fi
+            [ "$DMUSIC_DMENU_PATCHED" != "1" ] && MENU="[..] Go Back\n"
             for PDIR in "$PLAYLISTS_DIR"/*/; do
                 [ -d "$PDIR" ] || continue
-                PNAME=$(basename "$PDIR")
-                if [ -L "${PDIR}${LINK_NAME}" ]; then
-                    MENU="${MENU}󰄲 ${PNAME}\n"
-                else
-                    MENU="${MENU}󰄱 ${PNAME}\n"
-                fi
+                PDIR_TRIM="${PDIR%/}"
+                PNAME="${PDIR_TRIM##*/}"
+                [ -L "${PDIR}${LINK_NAME}" ] && MENU="${MENU}󰄲 ${PNAME}\n" || MENU="${MENU}󰄱 ${PNAME}\n"
             done
 
-            if [ -z "$MENU" ]; then
+            [ -z "$MENU" ] && {
                 notify-send "Playlists" "No playlists found. Create one with:\nmkdir ~/songs/playlists/MyPlaylist"
                 exit 0
-            fi
+            }
 
-            SELECTED=$(printf "%b" "$MENU" | $DMENU -l 15 -p "Playlists ($(basename "$FILE")):")
+            SELECTED=$(printf "%b" "$MENU" | $DMENU -l 15 -p "Playlists (${FILE##*/}):")
             [ -z "$SELECTED" ] && exec "$0"
             [ "$SELECTED" = "[..] Go Back" ] && exec "$0"
 
             # extract playlist name
-            PNAME=$(echo "$SELECTED" | sed 's/^[󰄲󰄱 ]* *//')
+            PNAME="${SELECTED#* }"
             PDIR="${PLAYLISTS_DIR}/${PNAME}"
             LINK_PATH="${PDIR}/${LINK_NAME}"
 
-            if [ -L "$LINK_PATH" ]; then
+            [ -L "$LINK_PATH" ] && {
                 # remove symlink
                 rm "$LINK_PATH"
                 notify-send "Playlists" "Removed from '${PNAME}'"
-            else
+            } || {
                 # create relative symlink
                 REL_TARGET=$(realpath --relative-to="$PDIR" "$ABS_TARGET")
                 ln -sf "$REL_TARGET" "$LINK_PATH"
                 notify-send "Playlists" "Added to '${PNAME}'"
-            fi
+            }
         done
         ;;
 esac

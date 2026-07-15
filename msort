@@ -2,9 +2,7 @@
 
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
 DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
-if [ -f "$DMUSIC_CONFIG" ]; then
-    . "$DMUSIC_CONFIG"
-fi
+[ -f "$DMUSIC_CONFIG" ] && . "$DMUSIC_CONFIG"
 
 : "${SONGS_DIR:=$HOME/songs}"
 TEMP_DIR="${SONGS_DIR}/temp"
@@ -78,11 +76,13 @@ sort_file() {
     DATE=$(get_tag "date")
     [ -z "$DATE" ] && DATE=$(get_tag "year")
 
-    EXT=$(printf '%s' "$FILE" | awk -F. '{print tolower($NF)}')
+    EXT="${FILE##*.}"
+    EXT="$(printf '%s' "$EXT" | tr '[:upper:]' '[:lower:]')"
     FORMAT=$(ext_to_format "$EXT")
 
     # fallbacks
-    STEM=$(basename "$FILE" | sed "s/\\.${EXT}$//I")
+    basename="${FILE##*/}"
+    STEM="${basename%.*}"
     [ -z "$ARTIST" ] && ARTIST="Unknown Artist"
     [ -z "$ALBUM"  ] && ALBUM="Single"
     [ -z "$TITLE"  ] && TITLE="$STEM"
@@ -110,16 +110,16 @@ sort_file() {
     log "file:   $FILE"
     log "dest:   $DEST_FILE"
 
-    if [ "$DRY_RUN" -eq 1 ]; then
+    [ "$DRY_RUN" -eq 1 ] && {
         log "[dry-run] would move -> $DEST_FILE"
         return 0
-    fi
+    }
 
-    if [ -e "$DEST_FILE" ]; then
+    [ -e "$DEST_FILE" ] && {
         log "SKIP (already exists): $DEST_FILE"
         notify "Skipped (already exists):\n${TRACK_PAD} - ${TITLE}.${EXT}"
         return 0
-    fi
+    }
 
     mkdir -p "$ALBUM_DIR" || die "cannot create dir: $ALBUM_DIR"
     mv -- "$FILE" "$DEST_FILE" || die "cannot move: $FILE -> $DEST_FILE"
@@ -134,38 +134,31 @@ sort_file() {
 command -v ffprobe >/dev/null 2>&1 || die "ffprobe not found (install ffmpeg)"
 command -v jq      >/dev/null 2>&1 || die "jq not found"
 
-if [ "$1" = "-n" ]; then
-    DRY_RUN=1
-    shift
-fi
+[ "$1" = "-n" ] && { DRY_RUN=1; shift; }
 
-if [ $# -eq 0 ]; then
+[ $# -eq 0 ] && {
     find "${TEMP_DIR}" -type f \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) | while IFS= read -r F; do
         sort_file "$F"
     done
-else
+} || {
     for F in "$@"; do
-        if [ -d "$F" ]; then
+        [ -d "$F" ] && {
             find "$F" -type f \( -iname "*.flac" -o -iname "*.mp3" -o -iname "*.opus" -o -iname "*.ogg" -o -iname "*.aac" -o -iname "*.m4a" \) | while IFS= read -r FILE; do
                 sort_file "$FILE"
             done
-        elif [ -f "$F" ]; then
-            sort_file "$F"
-        else
-            log "not a file or directory: $F"
-        fi
+        } || {
+            [ -f "$F" ] && sort_file "$F" || log "not a file or directory: $F"
+        }
     done
-fi
+}
 
-if [ "$DRY_RUN" -eq 0 ]; then
-    if [ $# -eq 0 ]; then
+[ "$DRY_RUN" -eq 0 ] && {
+    [ $# -eq 0 ] && {
         find "${TEMP_DIR}" -mindepth 1 -type d -empty -delete 2>/dev/null || true
-    else
+    } || {
         for F in "$@"; do
-            if [ -d "$F" ]; then
-                find "$F" -type d -empty -delete 2>/dev/null || true
-            fi
+            [ -d "$F" ] && { find "$F" -type d -empty -delete 2>/dev/null || true; }
         done
-    fi
+    }
     mpc update >/dev/null 2>&1 || true
-fi
+}
