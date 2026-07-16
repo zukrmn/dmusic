@@ -98,7 +98,14 @@ case "$CHOICE" in
         QUEUE_OPTIONS="[Clear Queue]"
         [ "$DMUSIC_DMENU_PATCHED" != "1" ] && QUEUE_OPTIONS="[..] Go Back
 ${QUEUE_OPTIONS}"
-        QUEUE_LIST=$(mpc playlist -f "%position% %artist% - %title%")
+        TAB=$(printf '\t')
+        QUEUE_LIST=$(mpc playlist -f "%position%\t[[%artist% - ]%title%]\t%file%" | while read -r line; do
+            pos="${line%%$TAB*}"
+            rest="${line#*$TAB}"
+            tags="${rest%%$TAB*}"
+            file="${rest#*$TAB}"
+            printf "%s\n" "$pos ${tags:-${file##*/}}"
+        done)
         SELECTED=$(printf "%s\n%s\n" "$QUEUE_OPTIONS" "$QUEUE_LIST" | $DMENU -l 20 -p "Queue:")
         [ -z "$SELECTED" ] && exec "$0"
         [ "$SELECTED" = "[..] Go Back" ] && exec "$0"
@@ -267,7 +274,12 @@ ${DIR_OPTS}"
         }
         ;;
     "󰋼")
-        CURRENT=$(mpc current -f "%artist% - %title% (%album%)")
+        TAB=$(printf '\t')
+        CURRENT=$(mpc current -f "[[%artist% - ]%title%[ (%album%)]]\t%file%" | while read -r line; do
+            tags="${line%%$TAB*}"
+            file="${line#*$TAB}"
+            printf "%s\n" "${tags:-${file##*/}}"
+        done)
         [ -n "$CURRENT" ] && notify-send "Currently Playing" "$CURRENT" || notify-send "MPD" "No active song in queue."
         ;;
     "󰉒")
