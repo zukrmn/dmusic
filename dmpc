@@ -135,7 +135,7 @@ ${QUEUE_OPTIONS}"
         while true; do
             [ "$CURRENT_DIR" = "$SONGS_DIR" ] && {
                 # exclude temp and playlists
-                LIST=$(ls -1 "$CURRENT_DIR" | grep -vE "^(temp|playlists|wishlist\.txt)$")
+                LIST=$(ls -1 "$CURRENT_DIR" | sort -f | grep -vE "^(temp|playlists|wishlist\.txt)$")
                 [ "$DMUSIC_DMENU_PATCHED" != "1" ] && LIST=$(printf "[..] Go Back\n%s" "$LIST")
                 :
             } || {
@@ -143,7 +143,7 @@ ${QUEUE_OPTIONS}"
 [Add Directory to Queue]"
                 [ "$DMUSIC_DMENU_PATCHED" != "1" ] && DIR_OPTS="[..] Go Back
 ${DIR_OPTS}"
-                LIST=$(printf "%s\n%s" "$DIR_OPTS" "$(ls -1 "$CURRENT_DIR")")
+                LIST=$(printf "%s\n%s" "$DIR_OPTS" "$(ls -1 "$CURRENT_DIR" | sort -f)")
             }
             
             SELECTED=$(echo "$LIST" | $DMENU -l 20 -p "Library:")
