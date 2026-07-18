@@ -45,6 +45,7 @@ Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, 
    A custom patch for `dmenu` (version 5.4) that introduces a vim-like navigation mode (`-vk`). 
    - Starts in normal mode: use `j`, `k` to navigate.
    - Overloads `h` (Left) and `l` (Right) to return custom exit codes (`10` and `11` respectively), enabling interactive shell scripts to traverse directory trees.
+   - Automatically centers the items on the screen when used in horizontal layout.
    - Press `/` to enter standard `dmenu` search/insert mode.
    - Press `Escape` to clear search and return to normal mode.
 
