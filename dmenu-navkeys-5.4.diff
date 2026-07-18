@@ -26,6 +26,7 @@ index 363d19f..4d17226 100644
 +			total_w += textw_clamp(it->text, mw);
 +		if (prompt && *prompt)
 +			total_w += promptw;
++		total_w += TEXTW("<");
 +		x = (mw - total_w) / 2;
 +	}
 +
