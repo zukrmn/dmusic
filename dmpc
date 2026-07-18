@@ -2,6 +2,7 @@
 
 : "${XDG_CONFIG_HOME:=$HOME/.config}"
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
+: "${XDG_DATA_HOME:=$HOME/.local/share}"
 
 DMUSIC_CONFIG="${XDG_CONFIG_HOME}/dmusic/config"
 [ -f "$DMUSIC_CONFIG" ] && . "$DMUSIC_CONFIG"
@@ -19,7 +20,7 @@ mpc > /dev/null 2>&1 || {
 
 # history
 CURRENT_SONG=$(mpc current -f "%file%")
-HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
+HISTORY_FILE="${XDG_DATA_HOME}/dmusic/history.txt"
 [ -n "$CURRENT_SONG" ] && {
     mkdir -p "${HISTORY_FILE%/*}"
     touch "$HISTORY_FILE"
@@ -99,7 +100,7 @@ case "$CHOICE" in
         [ "$DMUSIC_DMENU_PATCHED" != "1" ] && QUEUE_OPTIONS="[..] Go Back
 ${QUEUE_OPTIONS}"
         TAB=$(printf '\t')
-        QUEUE_LIST=$(mpc playlist -f "%position%\t[[%artist% - ]%title%]\t%file%" | while read -r line; do
+        QUEUE_LIST=$(mpc playlist -f "%position%\t[[%artist% - ]%title%]\t%file%" | while IFS= read -r line; do
             pos="${line%%$TAB*}"
             rest="${line#*$TAB}"
             tags="${rest%%$TAB*}"
@@ -257,7 +258,7 @@ ${DIR_OPTS}"
         }
         ;;
     "󱁴")
-        HISTORY_FILE="${XDG_CACHE_HOME}/dmusic/history.txt"
+        HISTORY_FILE="${XDG_DATA_HOME}/dmusic/history.txt"
         { [ -f "$HISTORY_FILE" ] && [ -s "$HISTORY_FILE" ]; } && SONG_LIST=$(tac "$HISTORY_FILE" | awk '!seen[$0]++') || SONG_LIST=$(mpc listall)
         
         [ "$DMUSIC_DMENU_PATCHED" != "1" ] && SONG_LIST=$(printf "[..] Go Back\n%s" "$SONG_LIST")
@@ -275,7 +276,7 @@ ${DIR_OPTS}"
         ;;
     "󰋼")
         TAB=$(printf '\t')
-        CURRENT=$(mpc current -f "[[%artist% - ]%title%[ (%album%)]]\t%file%" | while read -r line; do
+        CURRENT=$(mpc current -f "%title%\t%file%" | while IFS= read -r line; do
             tags="${line%%$TAB*}"
             file="${line#*$TAB}"
             printf "%s\n" "${tags:-${file##*/}}"
