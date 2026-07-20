@@ -136,6 +136,7 @@ ${QUEUE_OPTIONS}"
             [ "$CURRENT_DIR" = "$SONGS_DIR" ] && {
                 # exclude temp and playlists
                 LIST=$(ls -1 "$CURRENT_DIR" | sort -f | grep -vE "^(temp|playlists|wishlist\.txt)$")
+                LIST=$(printf "[Update DB]\n%s" "$LIST")
                 [ "$DMUSIC_DMENU_PATCHED" != "1" ] && LIST=$(printf "[..] Go Back\n%s" "$LIST")
                 :
             } || {
@@ -158,6 +159,12 @@ ${DIR_OPTS}"
                 
                 [ "$SELECTED" = "[..] Go Back" ] && {
                     [ "$CURRENT_DIR" != "$SONGS_DIR" ] && { CURRENT_DIR="${CURRENT_DIR%/*}"; continue; } || exec "$0"
+                }
+
+                [ "$SELECTED" = "[Update DB]" ] && {
+                    mpc update
+                    notify-send "MPD" "Database update triggered."
+                    break
                 }
 
                 { [ "$SELECTED" = "[Play Directory Now]" ] || [ "$SELECTED" = "[Add Directory to Queue]" ]; } && {
