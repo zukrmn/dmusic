@@ -17,6 +17,7 @@ Instead of relying on heavy ncurses clients or GUIs, `dmusic` leverages simple, 
    - Playback control (Toggle, Next, Prev, Shuffle, Repeat).
    - Queue management.
    - Interactive library browsing using `dmenu` directory traversal.
+   - Built-in MPD database update option (`[Update DB]`).
    - Play entire directories/albums at once (`[Play Directory Now]`).
    - Filesystem-based playlist management (using symlinks).
    - Local playback history (`~/.cache/dmusic/history.txt`).
@@ -165,5 +166,6 @@ Simply run `dmpc` or `smd` from your terminal, or bind them to a hotkey in your 
 - In the `dmenu` interface, use `j`/`k` to move up and down.
 - Use `l` to select/enter a directory.
 - Use `h` to go back a directory.
+- Select `[Update DB]` in the main Library root to refresh MPD after manually adding files.
 - When inside an artist/album directory, select `[Play Directory Now]` to instantly queue and play all its contents.
 - Press `/` to search. Press `Escape` to cancel the search and return to normal navigation.
